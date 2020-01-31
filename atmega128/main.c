@@ -6,10 +6,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <HD44780/HD44780.c>
-//#include <util/crc16.h>
 #include <avr/eeprom.h>
-
-//#include "crc.h"
 #include "base64.h"
 
 #define UART_BAUD 38400
@@ -37,11 +34,6 @@ void pid(int enc);
 
 void Ask_Encoder(int c);
 
-void Timer3_Init();
-
-
-//uint8_t _crc8_ccitt_update (uint8_t inCrc, uint8_t inData);
-
 void int_to_char (int l, char* tab);
 
 int char_to_int(char* c_array);
@@ -51,7 +43,6 @@ unsigned char EEPROM_read(unsigned int uiAddress);
 
 void Write_Position_EEPROM(int Ring, int Pos);
 void Read_Position_EEPROM(int Ring);
-
 
 void Menu();
 
@@ -75,7 +66,6 @@ volatile uint8_t i = 0, write_flag = 0, ins = 0, move_flag = 0, pid_enc = 1;
 volatile unsigned char set[6];
 
 uint8_t qtFlag = 0;
-//volatile int start_poz1 = 43, start_poz2 = 455, start_poz3 = 2;
 volatile int chapter = -1;
 volatile uint8_t Ring1_flag=0, Ring2_flag=0, Ring3_flag=0;
 
@@ -84,10 +74,6 @@ volatile char Prompt_PC[10];
 volatile uint8_t Prompt_counter = 0;
 volatile uint8_t Rings = 0;
 
-//EEMEM char Stan_zero;
-
-
-//------------------------------------------------
 char dane[2];
 int counter = 0;
 
@@ -108,7 +94,6 @@ int main(void)
 	DDRE &= ~(1<<PE4);
 	PORTE |= (1<<PE4);
 
-	//int enkoder = 0;
 
 // DRV2
 	DDRA |= (1<<PA0)|(1<<PA1)|(1<<PA2)|(1<<PA4)|(1<<PA5)|(1<<PA6);
@@ -127,10 +112,7 @@ int main(void)
 	PORTC &= ~(1<<PC5);
 	PORTC &= ~(1<<PC2);
 
-
 	PORTC |= (1<<PC1)|(1<<PC6);
-
-
 
 //DRV3
 	DDRF |= (1<<PF0)|(1<<PF1)|(1<<PF2)|(1<<PF4)|(1<<PF5)|(1<<PF6);
@@ -143,88 +125,14 @@ int main(void)
 
 
 	USART_Init(__UBRR);
-
-
 	USART2_Init(__UBRR);
 
-
 	LCD_Initalize();
-
-	/*uint8_t crc = 0;
-
-	char tab[2] = {'1', '2', '3'};
-
-	for(int i=0; i<=2; i++)
-	{
-		crc = _crc8_ccitt_update(crc, tab[i]);
-	}
-
-
-	Usart2_Transmit(crc);
-
-	Send_clause2("\r\n");
-*/
 
 	DDRE |= (1<<PE2)|(1<<PE3);
 
 	PORTE &= ~(1<<PE2);   // PE2=0 && PE3=0  -> Receiver
 	PORTE &= ~(1<<PE3);	 // PE2=1 && PE3=1	-> Transmitter
-
-
-	/*while(1)
-	{
-		char rec = USART_Receive();
-		Usart2_Transmit(rec);
-	} */
-
-
-
-
-				/*char num[3];
-
-
-				sprintf(num,"%d", 313);
-
-				int l = NELEMS(num);
-
-				num[l] = '\0';
-
-				const unsigned int* test_a[] = {num[0], num[1], num[2], num[3]};
-
-				unsigned int size_a = NELEMS(test_a);
-
-				unsigned int out_size_a = b64e_size(size_a) + 1;
-				unsigned char *out_a = malloc(out_size_a);
-
-				out_size_a = b64_encode((const unsigned int*)test_a,size_a,out_a);
-
-				Send_clause2(out_a);
-				Send_clause2("  ");
-
-
-
-_delay_ms(500);
-
-						int len_a = out_size_a;
-
-						int out_size_ad = b64d_size(len_a);
-						unsigned int *out_ad = malloc(out_size_ad+100);
-						out_size_ad = b64_decode((const unsigned int *)out_a, len_a, out_ad); // ???
-
-
-						for(int i=0; i<out_size_ad; i++)
-						{
-							Usart2_Transmit(out_ad[i]);
-						}
-						Usart2_Transmit(' ');
-						char s[10];
-						sprintf(s,"%d", out_size_ad);
-						Send_clause2(s);
-						Send_clause2("\r\n");
-
-
-	_delay_ms(200);  */
-
 
 	DDRB |= (1<<PB6)|(1<<PB7); // debug LED
 	PORTB |= (1<<PB6)|(1<<PB7);
@@ -243,9 +151,7 @@ _delay_ms(500);
 	Find_Start(3);
 	_delay_ms(250);
 
-
 	Set_Zero();
-
 
 	Menu();
 
@@ -271,17 +177,14 @@ _delay_ms(500);
 	{
 		if(chapter == 0)
 		{
-			//unsigned char odpc = USART2_Receive();
-
 			if(move_flag == 1)
 			{
 				chapter = 1;
+				qtFlag = 0;
 				cnt = 500;
 				Timer_Init();
 				LCD_Clear();
 			}
-
-
 
 			if(!(PINE & (1<<PE6)))
 			{
@@ -301,12 +204,6 @@ _delay_ms(500);
 
 				Ring++;
 
-
-				//if(pozycja1>=0)
-				//	PORTC |= (1<<PC1);
-				//else
-				//	PORTC &= ~(1<<PC1);
-
 				if(Ring >= 4)
 				{
 					LCD_GoTo(1,1);
@@ -320,11 +217,14 @@ _delay_ms(500);
 
 					cnt = 500;
 
+					move_flag = 1;
+
 					Timer_Init();
 				}
 			}
 
-
+			if(move_flag == 0)
+			{
 			if((PINE & (1<<PE4)))
 			{
 				if(!(PINE & (1<<PE5)))
@@ -359,11 +259,11 @@ _delay_ms(500);
 			 LCD_WriteText(c_pozycja);
 
 			 _delay_ms(70);
+			}
 		}
 
 		 if(chapter == 1)
 		 {
-			// LCD_Clear();
 			 LCD_GoTo(0,0);
 			 LCD_WriteText("Wait...");
 			 LCD_GoTo(5,1);
@@ -398,7 +298,6 @@ _delay_ms(500);
 ISR(USART1_RX_vect)
 {
 	Usart2_receive = UDR1;
-	// Code to be executed when the USART receives a byte here
 
 	if(UDR1 == 'P')
 	{
@@ -430,10 +329,6 @@ ISR(USART1_RX_vect)
 			ins = 4;
 
 
-
-
-
-
 		if(Usart2_receive == 'K')
 		{
 			if(ins == 1)
@@ -443,7 +338,6 @@ ISR(USART1_RX_vect)
 				LCD_WriteText("New settings");
 				_delay_ms(3500);
 				LCD_Clear();
-
 
 				if(set[1] == '0')
 				{
@@ -491,7 +385,6 @@ ISR(USART1_RX_vect)
 					Rings++;
 				}
 
-
 				if(Prompt_PC[0] == '3')
 				{
 					LCD_WriteText("Pos 3 = ");
@@ -520,35 +413,12 @@ ISR(USART1_RX_vect)
 				Send_clause2("PLK");
 			}
 
-
 			ins = 0;
 			i=0;
 			write_flag = 0;
 			Prompt_counter = 0;
 		}
 	}
-
-
-
-
-
-
-
-
-		/*if(set[1] == '1')
-		{
-			PORTC &= ~(1<<PC5); // ms1
-			PORTC |= (1<<PC6);
-		}
-		if(set[1] == '2')
-		{
-			PORTC &= ~(1<<PC5);
-			PORTC &= ~(1<<PC6);
-		}  */
-
-
-
-
 }
 
 void USART_Init( unsigned int ubrr)
@@ -622,31 +492,7 @@ void Find_Start(int addr)
 	LCD_GoTo(0,0);
 	LCD_WriteText("Wait");
 
-	//for(int i=1; i<=3; i++)
-	//{
-		//PORTE |= (1<<PE2);   // PE2=0 && PE3=0  -> Receiver
-		//PORTE |= (1<<PE3);
-		//_delay_ms(5);
-
-		//if(i==1)
-		//{
-			//Send_clause("R1S");
-			//_delay_ms(10);
-		//}
-
-		/*if(i==2)
-		{
-			Send_clause("R2S");
-			_delay_ms(10);
-		}
-
-		if(i==3)
-		{
-			Send_clause("R3S");
-			_delay_ms(10);
-		}*/
-
-		//////////////////	Zero searching; Ask->Response
+	//////////////////	Zero searching; Ask->Response
 
 	_delay_ms(1000);
 		while(1)
@@ -657,7 +503,7 @@ void Find_Start(int addr)
 				PORTE |= (1<<PE2);   // PE2=0 && PE3=0  -> Receiver
 				PORTE |= (1<<PE3);
 				_delay_ms(15);
-				Send_clause("R1S");
+				Send_clause("\n1S\t");
 				_delay_ms(5);
 
 
@@ -674,14 +520,14 @@ void Find_Start(int addr)
 				{
 					unsigned char r = USART_Receive();
 
-					if(r == 'K')
+					if(r == '\t')
 						break;
 
 					handler[it] = r;
 					it++;
 				}
 
-				if(handler[1] == '1' && handler[2] == 'N')
+				if(handler[1] == '0' && handler[2] == 'N')
 				{
 					_delay_ms(2);
 					PORTC |= (1<<PC2);
@@ -691,16 +537,8 @@ void Find_Start(int addr)
 				}
 				else
 				{
-					//PORTC |= (1<<PC7);
 					break;
 				}
-
-
-				/*if(handler[1] == '1' && handler[2] == 'P')
-				{
-					PORTC |= (1<<PC7);
-					break;
-				}*/
 
 				PORTB &= ~(1<<PB7);
 
@@ -708,60 +546,59 @@ void Find_Start(int addr)
 
 
 			if(addr == 2)
-						{
-							PORTE |= (1<<PE2);   // PE2=0 && PE3=0  -> Receiver
-							PORTE |= (1<<PE3);
-							_delay_ms(15);
-							Send_clause("R2S");
-							_delay_ms(5);
+			{
+				PORTE |= (1<<PE2);   // PE2=0 && PE3=0  -> Receiver
+				PORTE |= (1<<PE3);
+				_delay_ms(15);
+				Send_clause("\n2S\t");
+				_delay_ms(5);
+
+				PORTE &= ~(1<<PE2);   // PE2=0 && PE3=0  -> Receiver
+				PORTE &= ~(1<<PE3);
+				_delay_ms(5);
+
+				PORTB |= (1<<PB6);
+
+				char handler[4];
+				int it = 0;
+
+				while(1)
+				{
+					unsigned char r = USART_Receive();
+
+					if(r == '\t')
+						break;
+
+					handler[it] = r;
+					it++;
+				}
+
+				if(handler[1] == '0' && handler[2] == 'N')
+				{
+					_delay_ms(2);
+					PORTA |= (1<<PA5);
+					_delay_ms(2);
+					PORTA &= ~(1<<PA5);
+					_delay_ms(5);
+				}
 
 
-							PORTE &= ~(1<<PE2);   // PE2=0 && PE3=0  -> Receiver
-							PORTE &= ~(1<<PE3);
-							_delay_ms(5);
+				if(handler[1] == '0' && handler[2] == 'Z')
+				{
+					PORTA |= (1<<PA0);
+					break;
+				}
 
-							PORTB |= (1<<PB6);
+				PORTB &= ~(1<<PB6);
 
-							char handler[4];
-							int it = 0;
-
-							while(1)
-							{
-								unsigned char r = USART_Receive();
-
-								if(r == 'K')
-									break;
-
-								handler[it] = r;
-								it++;
-							}
-
-							if(handler[1] == '2' && handler[2] == 'N')
-							{
-								_delay_ms(2);
-								PORTA |= (1<<PA5);
-								_delay_ms(2);
-								PORTA &= ~(1<<PA5);
-								_delay_ms(5);
-							}
-
-
-							if(handler[1] == '2' && handler[2] == 'P')
-							{
-								PORTA |= (1<<PA0);
-								break;
-							}
-
-							PORTB &= ~(1<<PB6);
-
-						}
+			}
 
 			if(addr == 3)
 			{
 					PORTE |= (1<<PE2);   // PE2=0 && PE3=0  -> Receiver
 					PORTE |= (1<<PE3);
 					_delay_ms(15);
-					Send_clause("R3S");
+					Send_clause("\n3S\t");
 					_delay_ms(5);
 
 
@@ -778,14 +615,14 @@ void Find_Start(int addr)
 					{
 						unsigned char r = USART_Receive();
 
-						if(r == 'K')
+						if(r == '\t')
 							break;
 
 					handler[it] = r;
 					it++;
 					}
 
-					if(handler[1] == '3' && handler[2] == 'N')
+					if(handler[1] == '0' && handler[2] == 'N')
 					{
 						_delay_ms(2);
 						PORTF |= (1<<PF5);
@@ -795,7 +632,7 @@ void Find_Start(int addr)
 					}
 
 
-					if(handler[1] == '3' && handler[2] == 'P')
+					if(handler[1] == '0' && handler[2] == 'Z')
 					{
 						PORTF |= (1<<PF0);
 							break;
@@ -805,117 +642,11 @@ void Find_Start(int addr)
 
 				}
 
-
-		/*	if(enc == 1 && end1 == 0)
-				Send_clause("R1S");
-			if(enc == 2 && end2 == 0)
-				Send_clause("R2S");
-			_delay_ms(5);
-
-			enc++;
-
-			PORTE &= ~(1<<PE2);   // PE2=0 && PE3=0  -> Receiver
-			PORTE &= ~(1<<PE3);
-			_delay_ms(5);
-
-			PORTB |= (1<<PB7);
-
-			char handler[4];
-			int it = 0;
-
-			while(1)
-			{
-				unsigned char r = USART_Receive();
-
-				if(r == 'K')
-					break;
-
-				handler[it] = r;
-				it++;
-			}
-			//unsigned char r = USART_Receive();
-
-			//Usart2_Transmit(r);
-			//unsigned char rec1 = USART_Receive();
-
-			if(end1 == 0)
-			{
-			if(handler[1] == '1' && handler[2] == 'N')
-			{
-				_delay_ms(2);
-				PORTC |= (1<<PC2);
-				_delay_ms(2);
-				PORTC &= ~(1<<PC2);
-				_delay_ms(5);
-			}
-
-
-			if(handler[1] == '1' && handler[2] == 'P')
-			{
-				end1=1;
-				PORTC |= (1<<PC7);
-			}
-			}
-
-			if(end2 == 0)
-			{
-			if(handler[1] == '2' && handler[2] == 'N')
-						{
-							_delay_ms(2);
-							PORTA |= (1<<PA5); // zmienic port
-							_delay_ms(2);
-							PORTA &= ~(1<<PA5);
-							_delay_ms(5);
-						}
-
-
-						if(handler[1] == '2' && handler[2] == 'P')
-						{
-							//break;
-							end2=1;
-							PORTA |= (1<<PA0);
-						}
-			}
-
-			_delay_ms(5); */
-
 			PORTB &= ~(1<<PB7);
-
-
-			//if(end1 + end2 >= 2)
-			//	break;
 
 		}
 
-		/////////////////////
-
-
 		PORTC |= (1<<PC1);
-
-		/*PORTE &= ~(1<<PE2);   // PE2=0 && PE3=0  -> Receiver
-		PORTE &= ~(1<<PE3);
-		_delay_ms(5);
-
-		while(1)
-		{
-			unsigned char odb = USART_Receive();
-			//Usart2_Transmit(odb);
-
-
-			if(odb == 'P')
-				break;
-
-			_delay_ms(10);
-			PORTC |= (1<<PC2);
-			_delay_ms(10);
-			PORTC &= ~(1<<PC2);
-		} */
-
-
-		//PORTE |= (1<<PE2);
-		//PORTE |= (1<<PE3);
-
-
 
 	LCD_Clear();
 	LCD_GoTo(0,0);
@@ -934,21 +665,6 @@ void Find_Start(int addr)
  * - czekanie na odpowiedz
  * - interpretacja odpowiedzi*/
 
-void Timer3_Init()
-{
-	TCNT3 = 0;
-	TCCR3A = (1<<WGM31);
-	TCCR3B = (1<<CS30);//| (1<<CS12);
-	TIFR3 = (1<<TOV3);
-	TIMSK3 = (1<<TOIE3);//(1<<OCIE1A);
-	cnt3 = 250;
-
-}
-
-ISR (TIMER3_OVF_vect)
-{
-} // end Timer3_Init
-
 void Timer_Init()
 {
 		TCNT1 = 0;   //
@@ -957,7 +673,6 @@ void Timer_Init()
 		TCCR1B = (1<<CS10);//| (1<<CS12);
 		TIFR1 = (1<<TOV1);
 		TIMSK1 = (1<<TOIE1);//(1<<OCIE1A);
-		//sei();        // Enable global interrupts by setting global interrupt enable bit in SREG
 		cnt = 500;
 
 }
@@ -1008,7 +723,7 @@ ISR (TIMER1_OVF_vect)    // Timer1 ISR
 
 }
 
-void pid(int enc) // implement this as timer interrupt service routine {
+void pid(int enc)
 {
 	int error_pd = 0;
 
@@ -1038,56 +753,54 @@ void pid(int enc) // implement this as timer interrupt service routine {
 
 	 double output_round = round(output);
 
-if(abs(error_pd) > 250)
-{
-		if(error_pd >= 250 && enc == 1)
-		{
+	if(abs(error_pd) > 250)
+	{
+			if(error_pd >= 250 && enc == 1)
+			{
+				PORTC &= ~(1<< PC1);
+			}
+
+			if(error_pd < 250 && enc == 1)
+			{
+				PORTC |= (1<< PC1);
+			}
+
+			if(error_pd >= 250 && enc == 2)
+			{
+				PORTA &= ~(1<< PA6);
+			}
+
+			if(error_pd < 250 && enc == 2)
+			{
+				PORTA |= (1<< PA6);
+			}
+
+			if(error_pd >= 250 && enc == 3)
+			{
+				PORTF &= ~(1<<PF6);
+			}
+			if(error_pd < 250 && enc == 3)
+			{
+				PORTF |= (1<<PF6);
+			}
+	}
+	else
+	{
+		if(output_round >= 0 && enc == 1)
+			PORTC |= (1<< PC1); // ttuaj jest zamiana
+		else
 			PORTC &= ~(1<< PC1);
-		}
 
-		if(error_pd < 250 && enc == 1)
-		{
-			PORTC |= (1<< PC1);
-		}
-
-		if(error_pd >= 250 && enc == 2)
-		{
-			PORTA &= ~(1<< PA6);
-		}
-
-		if(error_pd < 250 && enc == 2)
-		{
+		if(output_round >= 0 && enc == 2)
 			PORTA |= (1<< PA6);
-		}
+		else
+			PORTA &= ~(1<< PA6);
 
-		if(error_pd >= 250 && enc == 3)
-		{
-			PORTF &= ~(1<<PF6);
-		}
-		if(error_pd < 250 && enc == 3)
-		{
+		if(output_round >= 0 && enc == 3)
 			PORTF |= (1<<PF6);
-		}
-}
-else
-{
-	if(output_round >= 0 && enc == 1)
-		PORTC |= (1<< PC1); // ttuaj jest zamiana
-	else
-		PORTC &= ~(1<< PC1);
-
-	if(output_round >= 0 && enc == 2)
-		PORTA |= (1<< PA6);
-	else
-		PORTA &= ~(1<< PA6);
-
-	if(output_round >= 0 && enc == 3)
-		PORTF |= (1<<PF6);
-	else
-		PORTF &= ~(1<<PF6);
-}
-
-
+		else
+			PORTF &= ~(1<<PF6);
+	}
 
 
 	if(output_round != 0)
@@ -1120,15 +833,6 @@ else
 		}
 	}
 
-	/*if(output_round == 0)
-	{
-		if(enc == 1)
-			PORTC |= (1<<PC7);
-
-		if(enc == 2)
-			PORTA |= (1<<PA0);
-	}*/
-
 	if(enc == 1)
 		_pre_error = error_pd;
 
@@ -1153,7 +857,6 @@ else
 			cnt = 750;
 	}
 
-
 	if(chapter == -1)
 	{
 		if(_pre_error == 0)
@@ -1170,50 +873,8 @@ else
 			Ring3_flag = 1;
 		else
 			Ring3_flag = 0;
-
 	}
-
-/*if(enc == 1)
-{
-	char c[10];
-	itoa(pre_stan, c, 10);
-	Send_clause2(c);
-    Send_clause2(" ");
-	itoa(error_pd, c, 10);
-	Send_clause2(c);
-	Send_clause2(" ");
-	itoa(output, c, 10);
-	Send_clause2(c);
-	Send_clause2(" ");
-	itoa(cnt, c, 10);
-	Send_clause2(c);
-	Send_clause2("\r\n");
-}*/
-
-
 }
-
-/*uint8_t _crc8_ccitt_update (uint8_t inCrc, uint8_t inData)
-     {
-         uint8_t   i;
-         uint8_t   data;
-
-         data = inCrc ^ inData;
-
-         for ( i = 0; i < 8; i++ )
-         {
-            if (( data & 0x80 ) != 0 )
-           {
-                data <<= 1;
-                data ^= 0x07;
-           }
-           else
-           {
-                data <<= 1;
-           }
-        }
-        return data;
-    } */
 
 void int_to_char (int l, char* tab)
 {
@@ -1245,113 +906,90 @@ void int_to_char (int l, char* tab)
 
 int char_to_int(char* c_array)
 {
-	    int res = 0; // Initialize result
+	    int res = 0;
 
-	    // Iterate through all characters of input string and
-	    // update result
 	    for (int i = 0; c_array[i] != '\0'; ++i)
 	        res = res * 10 + c_array[i] - '0';
 
-	    // return result.
 	    return res;
 }
 
 void Ask_Encoder(int c)
 {
-					PORTE |= (1<<PE2);
-					PORTE |= (1<<PE3);
-					_delay_ms(5);
+	PORTE |= (1<<PE2);
+	PORTE |= (1<<PE3);
+	_delay_ms(5);
 
+	if(c==1)
+	{
+		Send_clause("\n1E\t");
+	}
+	if(c==2)
+	{
+		Send_clause("\n2E\t");
+	}
+	if(c==3)
+	{
+		Send_clause("\n3E\t");
+	}
+	_delay_ms(2);
+	PORTE &= ~(1<<PE2);
+	PORTE &= ~(1<<PE3);
 
-					//Usart_Transmit('R');
-					//PORTB |= (1<<PB7);
-					if(c==1)
-					{
-						Send_clause("R1");
-					}
-					if(c==2)
-					{
-						Send_clause("R2");
-					}
-					if(c==3)
-					{
-						Send_clause("R3");
-					}
-					_delay_ms(2);
-					PORTE &= ~(1<<PE2);
-					PORTE &= ~(1<<PE3);
+	PORTB |= (1<<PB6);
 
-					PORTB |= (1<<PB6);
-
-					int j=0;
-					char ciag[10] = "";
+	int j=0;
+	char ciag[10] = "";
 
 
 
-					while(1)
-					{
-							unsigned char odb = USART_Receive();
+	while(1)
+	{
+		unsigned char odb = USART_Receive();
 
 
-							if(odb == 'K') // \0
-							{
-								break;
-							}
-							else
-							{
-								//Usart2_Transmit(odb);
-								ciag[j]=odb;
-								j++;
-							}
-					}
-					//PORTB &= ~(1<<PB7);
-					//Send_clause2("\r\n");
-					/*
-					PORTB |= (1<<PB6);
+		if(odb == '\t') // \0
+		{
+			break;
+		}
+		else
+		{
+			ciag[j]=odb;
+			j++;
+		}
+	}
 
-					//Send_clause2("  ");
+	char tab[5] = {ciag[1], ciag[2], ciag[3], ciag[4], ciag[5]};
 
-					ciag[j] = '\0';
+	tab[j] = '\0';
+	int out_size_ad = b64d_size(j);
+	unsigned int out_ad[6];//*out_ad = malloc(out_size_ad+100);
+	out_size_ad = b64_decode((const unsigned char*)tab, j, out_ad);
 
-					//Send_clause2(ciag[0]); */
+	char num[4] = {out_ad[0], out_ad[1], out_ad[2], '\0'};
 
-
-
-
-					char tab[5] = {ciag[1], ciag[2], ciag[3], ciag[4], ciag[5]};
-
-					tab[j] = '\0';
-					int out_size_ad = b64d_size(j);
-					unsigned int out_ad[6];//*out_ad = malloc(out_size_ad+100);
-					out_size_ad = b64_decode((const unsigned char*)tab, j, out_ad);
-
-					char num[4] = {out_ad[0], out_ad[1], out_ad[2], '\0'};
-
-					//pre_stan = 0;
-					//pre_stan2 = 0;
-
-					if(c==1)
-					{
-						pre_stan = char_to_int(num);
-					}
+	if(c==1)
+	{
+		pre_stan = char_to_int(num);
+	}
 
 
-					if(c==2)
-						pre_stan2 = char_to_int(num);
+	if(c==2)
+		pre_stan2 = char_to_int(num);
 
-					if(c==3)
-						pre_stan3 = char_to_int(num);
+	if(c==3)
+		pre_stan3 = char_to_int(num);
 
 
 
-					if(pre_stan == pozycja1 && pre_stan2 == pozycja2 && pre_stan3 == pozycja3 && qtFlag == 0)
-					{
-							Send_clause2("IAD\0");
-							move_flag = 0;
-							qtFlag = 1;
-					}
+	if(pre_stan == pozycja1 && pre_stan2 == pozycja2 && pre_stan3 == pozycja3)
+	{
+		Send_clause2("IAD\0");
+		move_flag = 0;
+		qtFlag = 1;
+	}
 
-					PORTB &= ~(1<<PB6);
+	PORTB &= ~(1<<PB6);
 }
 
 void EEPROM_write(unsigned int ucAddress, unsigned char ucData)
@@ -1499,7 +1137,6 @@ void Menu()
 				if(wsk > 3 && Step_size < 3)
 					Step_size++;
 
-
 				if(wsk < 2)
 						wsk++;
 
@@ -1538,7 +1175,6 @@ void Menu()
 			}
 		}
 
-
 		if(!(PINE & (1<<PE6)))
 		{
 			if(wsk == 0)
@@ -1568,7 +1204,6 @@ void Menu()
 				continue;
 			}
 		}
-
 	}
 
 
@@ -1587,173 +1222,145 @@ void Menu()
 				PORTC |= (1<<PC6); break;}
 	}
 
-
 	_delay_ms(500);
 }
 
 
 void Set_Zero()
 {
-	// ustawienia
-			uint8_t wsk = 0;
+	uint8_t wsk = 0;
+
+	while(1)
+	{
+		if(wsk == 0)
+		{
+			LCD_GoTo(0,0);
+			LCD_WriteText(">Set start");
+			LCD_GoTo(0,1);
+			LCD_WriteText("Use existing");
+		}
+
+		if(wsk == 1)
+		{
+			LCD_GoTo(0,0);
+			LCD_WriteText("Set start");
+			LCD_GoTo(0,1);
+			LCD_WriteText(">Use existing");
+		}
+
+
+		if((PINE & (1<<PE4)))
+		{
+			if(!(PINE & (1<<PE5)))
+			{
+				if(wsk == 0)
+					wsk = 1;
+			}
+		} else
+		{
+			if(PINE & (1<<PE5))
+			{
+				if(wsk == 1)
+					wsk = 0;
+			}
+		}
+
+		if(!(PINE & (1<<PE6)))
+			break;
+
+		_delay_ms(75);
+		LCD_Clear();
+		}
+
+		_delay_ms(500);
+
+		if(wsk == 0)
+		{
+			LCD_Clear();
+			LCD_GoTo(0,0);
+			LCD_WriteText("Set start");
+			LCD_GoTo(5,1);
+			LCD_WriteText("<Click> OK");
+
 
 			while(1)
 			{
-				if(wsk == 0)
-				{
-					LCD_GoTo(0,0);
-					LCD_WriteText(">Set start");
-					LCD_GoTo(0,1);
-					LCD_WriteText("Use existing");
-				}
-
-				if(wsk == 1)
-				{
-					LCD_GoTo(0,0);
-					LCD_WriteText("Set start");
-					LCD_GoTo(0,1);
-					LCD_WriteText(">Use existing");
-				}
-
-
-				if((PINE & (1<<PE4)))
-				{
-					if(!(PINE & (1<<PE5)))
-					{
-						if(wsk == 0)
-							wsk = 1;
-					}
-				} else
-				{
-					if(PINE & (1<<PE5))
-					{
-						if(wsk == 1)
-							 wsk = 0;
-					}
-				}
-
 				if(!(PINE & (1<<PE6)))
 					break;
-
-				_delay_ms(75);
-				LCD_Clear();
 			}
 
-			_delay_ms(500);
+			Ask_Encoder(1);
+			_delay_ms(100);
+			Write_Position_EEPROM(1, pre_stan);
 
-			if(wsk == 0)
-			{
-				LCD_Clear();
-				LCD_GoTo(0,0);
-				LCD_WriteText("Set start");
-				LCD_GoTo(5,1);
-				LCD_WriteText("<Click> OK");
+			Ask_Encoder(2);
+			_delay_ms(100);
+			Write_Position_EEPROM(2, pre_stan2);
 
+			Ask_Encoder(3);
+			_delay_ms(100);
+			Write_Position_EEPROM(3, pre_stan3);
 
-				while(1)
-				{
-					if(!(PINE & (1<<PE6)))
-						break;
-				}
-
-				Ask_Encoder(1);
-				_delay_ms(100);
-				Write_Position_EEPROM(1, pre_stan);
-
-				Ask_Encoder(2);
-				_delay_ms(100);
-				Write_Position_EEPROM(2, pre_stan2);
-
-				Ask_Encoder(3);
-				_delay_ms(100);
-				Write_Position_EEPROM(3, pre_stan3);
-
-				char a[10];
-				itoa(pre_stan3, a, 10);
+			char a[10];
+			itoa(pre_stan3, a, 10);
 
 
+			LCD_Clear();
+			LCD_GoTo(0,0);
+			LCD_WriteText(a);
 
-				LCD_Clear();
-				LCD_GoTo(0,0);
-				LCD_WriteText(a);
+			_delay_ms(2500);
 
-				_delay_ms(2500);
+			PORTE |= (1<<PE2);
+			PORTE |= (1<<PE3);
 
-				PORTE |= (1<<PE2);
-				PORTE |= (1<<PE3);
+			_delay_ms(100);
+			Send_clause("\nZA\t");
 
-				_delay_ms(100);
-				//Send_clause("RA0K");
-				Send_clause("RZAK");
-				//Send_clause2("R10K");
+			_delay_ms(1200);
 
-				_delay_ms(1200);
+			pozycja1 = 0;
+			pozycja2 = 0;
+			pozycja3 = 0;
+		} // end if wsk == 0
+		else if(wsk == 1)// wsk == 1
+		{
+			Read_Position_EEPROM(1);
+			Read_Position_EEPROM(2);
+			Read_Position_EEPROM(3);
 
-				pozycja1 = 0;
-				pozycja2 = 0;
-				pozycja3 = 0;
-				/*PORTE &= ~(1<<PE2);   // PE2=0 && PE3=0  -> Receiver
-				PORTE &= ~(1<<PE3);
-				_delay_ms(5);
+			_delay_ms(1000);
 
-				unsigned char p;
+			cnt = 500;
 
-				while(1)
-				{
-					unsigned char r = USART_Receive();
-					Usart2_Transmit(r);
-					Ret_flag = 0;
+			LCD_Clear();
+			LCD_GoTo(0,0);
+			LCD_WriteText("Zero positions");
+			LCD_GoTo(0,1);
+			LCD_WriteText("Wait...");
 
-					if(r == 'S' && p=='1')
-						break;
+			Timer_Init();
 
-					p = r;
-				} */
+			while(chapter == -1)
+			{}
 
-			} // end if wsk == 0
-			else if(wsk == 1)// wsk == 1
-			{
-				Read_Position_EEPROM(1);
-				Read_Position_EEPROM(2);
-				Read_Position_EEPROM(3);
+			LCD_Clear();
+			LCD_GoTo(0,0);
+			LCD_WriteText("OK");
+			_delay_ms(1500);
 
-				_delay_ms(1000);
-			//	Write_Position_EEPROM(1, pozycja1);
-			//	Write_Position_EEPROM(2, pozycja2);
-			//	Write_Position_EEPROM(3, pozycja3);
+			PORTE |= (1<<PE2);
+			PORTE |= (1<<PE3);
 
-				cnt = 500;
+			_delay_ms(100);
 
-				LCD_Clear();
-				LCD_GoTo(0,0);
-				LCD_WriteText("Zero positions");
-				LCD_GoTo(0,1);
-				LCD_WriteText("Wait...");
+			Send_clause("\nZA\t");
 
-				Timer_Init();
+			_delay_ms(1200);
 
-				while(chapter == -1)
-				{}
-				LCD_Clear();
-				LCD_GoTo(0,0);
-				LCD_WriteText("OK");
-				_delay_ms(1500);
+			pozycja1 = 0;
+			pozycja2 = 0;
+			pozycja3 = 0;
 
-				PORTE |= (1<<PE2);
-				PORTE |= (1<<PE3);
-
-				_delay_ms(100);
-
-				Send_clause("RZAK");
-
-				_delay_ms(1200);
-
-				pozycja1 = 0;
-				pozycja2 = 0;
-				pozycja3 = 0;
-
-
-				//////////// zapis do eeprom
-				///////////
-			}
+		}
 }
